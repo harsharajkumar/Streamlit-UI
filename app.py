@@ -17,7 +17,7 @@ summary_path = "summarization"
 story_path = "story_generation"
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-# === Functions ===
+# === Utility Functions ===
 def extract_text_from_pdf(pdf_file):
     reader = PdfReader(pdf_file)
     return "\n".join([page.extract_text() for page in reader.pages if page.extract_text()])
@@ -55,7 +55,7 @@ def summarize_text(text, tokenizer, model):
     return tokenizer.decode(summary_ids[0], skip_special_tokens=True)
 
 def generate_story(summary, tokenizer, model):
-    story_prompt = f"""You are a master storyteller. Convert the following technical summary into a story that captures imagination, emotion, and human connection.
+    story_prompt = f"""You are a master storyteller. Convert the following technical research summary into an engaging, emotional, and reader-friendly story for a general audience.
 
 --- Summary: {summary}"""
     max_tokens = min(1024, tokenizer.model_max_length - 20)
@@ -69,80 +69,104 @@ def generate_story(summary, tokenizer, model):
     )
     return tokenizer.decode(story_ids[0], skip_special_tokens=True)
 
-# === UI Starts Here ===
-st.set_page_config(page_title="🧠 Paper2Story - Research Paper to Story", layout="centered")
-st.markdown(
-    """
+# === UI CONFIGURATION ===
+st.set_page_config(page_title="🧠 Paper2Story | AI Research Story Generator", layout="centered")
+st.markdown("""
     <style>
-        .main {background-color: #f5f7fa;}
-        .block-container {padding-top: 2rem;}
-        .stSpinner > div > div {color: #4B8BBE;}
-        .stButton>button {background-color: #4B8BBE; color: white; border-radius: 8px;}
+        html, body, [class*="css"]  {
+            font-family: 'Segoe UI', sans-serif;
+        }
+        .main {
+            background-color: #f8f9fa;
+        }
+        .title {
+            font-size: 2.5rem !important;
+            font-weight: 700;
+        }
+        .subtitle {
+            font-size: 1.2rem !important;
+            color: #6c757d;
+        }
+        .section-title {
+            font-size: 1.4rem;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            color: #333;
+        }
+        .stSpinner > div > div {
+            color: #0d6efd;
+        }
+        .stButton > button {
+            border-radius: 10px;
+            background-color: #0d6efd;
+            color: white;
+            font-weight: 500;
+            padding: 0.6em 1.2em;
+        }
     </style>
-    """,
-    unsafe_allow_html=True
-)
+""", unsafe_allow_html=True)
 
-# Sidebar
+# === Sidebar ===
 st.sidebar.image("https://cdn-icons-png.flaticon.com/512/3064/3064197.png", width=80)
-st.sidebar.title("🛠️ How it works")
-st.sidebar.markdown(
-    """
-    1. Upload a research paper (PDF)  
-    2. We'll extract and clean the content  
-    3. Summarize it intelligently  
-    4. Craft a human-friendly story 🌟  
-    """
-)
-st.sidebar.markdown("Made with ❤️ for Capstone")
+st.sidebar.markdown("## 🔍 How it Works")
+st.sidebar.markdown("""
+1. Upload a research paper in PDF  
+2. AI will extract and summarize it  
+3. A human-style story will be generated  
+""")
+st.sidebar.markdown("---")
+st.sidebar.caption("Crafted with ❤️ for Capstone Excellence")
 
-# Title
-st.title("📚 Research Paper ➜ Story Generator")
-st.caption("Transform complex academic writing into engaging narratives using AI.")
+# === Main Title ===
+st.markdown('<p class="title">📚 Paper2Story</p>', unsafe_allow_html=True)
+st.markdown('<p class="subtitle">Transform research papers into captivating stories using AI</p>', unsafe_allow_html=True)
 
-# Upload
-uploaded_file = st.file_uploader("📤 Upload a Research Paper (PDF)", type=["pdf"])
+# === File Upload ===
+uploaded_file = st.file_uploader("📄 Upload your research paper (PDF)", type=["pdf"])
 
+# === Process Logic ===
 if uploaded_file:
-    with st.spinner("🔍 Extracting & cleaning text..."):
+    st.markdown('<div class="section-title">1️⃣ Extracting & Preprocessing</div>', unsafe_allow_html=True)
+    with st.spinner("Reading and cleaning your document..."):
         raw_text = extract_text_from_pdf(uploaded_file)
         cleaned_text = clean_text(raw_text)
         chunks = chunk_text(cleaned_text)
 
-    with st.spinner("⚙️ Loading summarization model..."):
+    st.markdown('<div class="section-title">2️⃣ Summarization in Progress</div>', unsafe_allow_html=True)
+    with st.spinner("Loading summarization model..."):
         summary_tokenizer = AutoTokenizer.from_pretrained(os.path.join(summary_path, model_name))
         summary_model = AutoModelForSeq2SeqLM.from_pretrained(os.path.join(summary_path, model_name)).to(device)
 
     summaries = []
-    with st.spinner("🧠 Summarizing paper..."):
-        progress = st.progress(0)
-        for idx, chunk in enumerate(chunks):
-            summaries.append(summarize_text(chunk, summary_tokenizer, summary_model))
-            progress.progress((idx + 1) / len(chunks))
-        combined_summary = " ".join(summaries)
+    progress = st.progress(0, text="Summarizing content...")
+    for i, chunk in enumerate(chunks):
+        summaries.append(summarize_text(chunk, summary_tokenizer, summary_model))
+        progress.progress((i + 1) / len(chunks))
 
+    combined_summary = " ".join(summaries)
     del summary_model, summary_tokenizer
     gc.collect()
     torch.cuda.empty_cache()
 
-    with st.spinner("📖 Loading story generation model..."):
+    st.markdown('<div class="section-title">3️⃣ Story Generation</div>', unsafe_allow_html=True)
+    with st.spinner("Loading story model..."):
         story_tokenizer = AutoTokenizer.from_pretrained(os.path.join(story_path, model_name))
         story_model = AutoModelForSeq2SeqLM.from_pretrained(os.path.join(story_path, model_name)).to(device)
 
-    with st.spinner("🪄 Generating your story..."):
+    with st.spinner("Generating the story..."):
         story = generate_story(combined_summary, story_tokenizer, story_model)
+        del story_model, story_tokenizer
+        gc.collect()
+        torch.cuda.empty_cache()
 
-    del story_model, story_tokenizer
-    gc.collect()
-    torch.cuda.empty_cache()
+    st.success("✅ Story Generated Successfully!")
+    st.markdown('<div class="section-title">📖 Final Output</div>', unsafe_allow_html=True)
 
-    st.success("✅ Story Generated!")
-    st.subheader("✨ Your Generated Story")
-    with st.expander("Click to read the full story"):
-        st.markdown(story)
+    # Format story
+    formatted_story = "\n\n".join(story.split(". "))
+    st.text_area("Your Story", formatted_story, height=400)
 
-    st.download_button("💾 Download Story", story, file_name="generated_story.txt")
-
+    st.download_button("💾 Download as .txt", story, file_name="paper2story_output.txt", use_container_width=True)
 else:
-    st.info("👆 Please upload a PDF to begin.")
+    st.info("Please upload a PDF file to begin the transformation.")
 
