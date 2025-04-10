@@ -11,7 +11,7 @@ import gc
 nltk.download('punkt')
 from nltk.tokenize import sent_tokenize
 
-# Constants
+# === Setup ===
 model_name = "ProphetNet"
 summary_path = "summarization"
 story_path = "story_generation"
@@ -111,8 +111,8 @@ st.sidebar.image("https://cdn-icons-png.flaticon.com/512/3064/3064197.png", widt
 st.sidebar.markdown("## 🔍 How it Works")
 st.sidebar.markdown("""
 1. Upload a research paper in PDF  
-2. AI will extract and summarize it  
-3. A human-style story will be generated  
+2. Click **Submit**  
+3. Get an engaging story from the content  
 """)
 st.sidebar.markdown("---")
 st.sidebar.caption("Crafted with ❤️ for Capstone Excellence")
@@ -121,11 +121,11 @@ st.sidebar.caption("Crafted with ❤️ for Capstone Excellence")
 st.markdown('<p class="title">📚 Paper2Story</p>', unsafe_allow_html=True)
 st.markdown('<p class="subtitle">Transform research papers into captivating stories using AI</p>', unsafe_allow_html=True)
 
-# === File Upload ===
+# === Upload Section ===
 uploaded_file = st.file_uploader("📄 Upload your research paper (PDF)", type=["pdf"])
+submit_clicked = st.button("🚀 Submit and Generate Story")
 
-# === Process Logic ===
-if uploaded_file:
+if uploaded_file and submit_clicked:
     st.markdown('<div class="section-title">1️⃣ Extracting & Preprocessing</div>', unsafe_allow_html=True)
     with st.spinner("Reading and cleaning your document..."):
         raw_text = extract_text_from_pdf(uploaded_file)
@@ -162,11 +162,10 @@ if uploaded_file:
     st.success("✅ Story Generated Successfully!")
     st.markdown('<div class="section-title">📖 Final Output</div>', unsafe_allow_html=True)
 
-    # Format story
     formatted_story = "\n\n".join(story.split(". "))
     st.text_area("Your Story", formatted_story, height=400)
 
     st.download_button("💾 Download as .txt", story, file_name="paper2story_output.txt", use_container_width=True)
-else:
-    st.info("Please upload a PDF file to begin the transformation.")
 
+elif uploaded_file and not submit_clicked:
+    st.info("Click the Submit button to begin story generation.")
